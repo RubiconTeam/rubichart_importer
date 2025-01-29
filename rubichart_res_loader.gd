@@ -1,8 +1,10 @@
 @tool
 
-class_name RbcResourceFormatLoader
+class_name RubiChartResourceFormatLoader
 
 extends ResourceFormatLoader
+
+const RbcV1_1_0_0 = preload("res://addons/rubichart_importer/loaders/rbc_1.1.gd")
 
 func _get_recognized_extensions() -> PackedStringArray:
 	return PackedStringArray(["rbc"])
@@ -22,9 +24,17 @@ func _load(path: String, original_path: String, use_sub_threads: bool, cache_mod
 	if error != OK:
 		return error
 	
-	var bytes : PackedByteArray = reader.get_buffer(reader.get_length())
+	var chart : RubiChart = null
+	var extension : String = path.get_extension().to_lower()
+	match extension:
+		"rbc":
+			var version : int = reader.get_32()
+			match version:
+				_:
+					chart = RbcV1_1_0_0.convert(reader)
+					
 	reader.close()
-	
-	var chart : RubiChart = RubiChart.new()
-	chart.LoadBytes(bytes)	
 	return chart
+
+func sign_uint32(unsigned : int):
+	return (unsigned + 1 << 31) % 1 << 32 - 1 << 31

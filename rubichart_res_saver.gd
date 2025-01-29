@@ -1,8 +1,10 @@
 @tool
 
-class_name RbcResourceFormatSaver
+class_name RubiChartResourceFormatSaver
 
 extends ResourceFormatSaver
+
+const Rbc = preload("res://addons/rubichart_importer/savers/rbc.gd")
 
 func _get_recognized_extensions(resource : Resource) -> PackedStringArray:
 	return PackedStringArray(["rbc"])
@@ -20,8 +22,10 @@ func _save(resource : Resource, path : String, flags : int) -> Error:
 		return error
 	
 	var chart : RubiChart = resource as RubiChart
-	var bytes : PackedByteArray = chart.ToBytes()
-	writer.store_buffer(bytes)
+	var extension : String = path.get_extension().to_lower()
+	match extension:
+		"rbc":
+			Rbc.save(chart, writer)
+
 	writer.close()
-	
 	return OK
