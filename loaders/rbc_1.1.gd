@@ -47,7 +47,6 @@ static func convert(reader : FileAccess) -> RubiChart:
 		individual_chart.SvChanges = sv_changes
 		
 		var note_count : int = int(reader.get_32())
-		print(note_count)
 		var notes : Array[NoteData] = []
 		for j in note_count:
 			var note : NoteData = NoteData.new()
