@@ -1,6 +1,6 @@
 @tool
 
-class_name RubiChartResourceFormatSaver
+class_name RbcResourceFormatSaver
 
 extends ResourceFormatSaver
 

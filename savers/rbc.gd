@@ -1,5 +1,6 @@
 extends RefCounted
 
+# RubiChart v1.1.1
 static func save(chart : RubiChart, writer : FileAccess) -> void:
 	# Cache note types
 	var note_types : Array[StringName] = []
@@ -14,6 +15,7 @@ static func save(chart : RubiChart, writer : FileAccess) -> void:
 			note_types.push_back(cur_note.Type)
 			type_index_map.set(cur_note.Type, note_types.size() - 1)
 	
+	writer.store_buffer("RBCN".to_utf8_buffer())
 	writer.store_32(chart.Version)
 	writer.store_32(chart.Difficulty)
 	writer.store_float(chart.ScrollSpeed)
@@ -52,35 +54,26 @@ static func save(chart : RubiChart, writer : FileAccess) -> void:
 			var sv_change : SvChange = individual_chart.SvChanges[j]
 			writer.store_float(sv_change.Time)
 			writer.store_float(sv_change.Multiplier)
-		
+
 		writer.store_32(individual_chart.Notes.size())
 		for n in individual_chart.Notes.size():
 			var note : NoteData = individual_chart.Notes[n]
 			var serialized_type : int = get_serialized_type(note)
 			writer.store_8(serialized_type)
 
-			# Normal tap note
 			writer.store_float(note.Time)
 			writer.store_32(note.Lane)
-			
+
+			if serialized_type >= 4: # Is hold note
+				writer.store_float(note.Length)
+				serialized_type -= 4
+
 			match serialized_type:
-				1: # Typed tap note
-					writer.store_32(type_index_map[note.Type])
-				2: # Tap note with params
+				1: # Typed note
+					writer.store_32(type_index_map[note.Type])	
+				2: # Note with params
 					write_note_parameters(writer, note)
-				3: # Typed tap note with params
-					writer.store_32(type_index_map[note.Type])
-					write_note_parameters(writer, note)
-				4: # Normal hold note
-					writer.store_float(note.Length)
-				5: # Typed hold note
-					writer.store_float(note.Length)
-					writer.store_32(type_index_map[note.Type])
-				6: # Hold note with params
-					writer.store_float(note.Length)
-					write_note_parameters(writer, note)
-				7: # Typed hold note with parameters
-					writer.store_float(note.Length)
+				3: # Typed note with params
 					writer.store_32(type_index_map[note.Type])
 					write_note_parameters(writer, note)
 
@@ -96,27 +89,22 @@ static func write_note_parameters(writer : FileAccess, note : NoteData) -> void:
 		var param_value_bytes : PackedByteArray = var_to_bytes(note.Parameters[keys[k]])
 		writer.store_32(param_value_bytes.size())
 		writer.store_buffer(param_value_bytes)
-	
-static func get_serialized_type(note : NoteData) -> int:
-	if note.Length > 0.0:
-		if note.Type != "normal":
-			if note.Parameters.size() > 0:
-				return 7 # Typed hold note with params
-			
-			return 5 # Typed hold note
-			
-		if note.Parameters.size() > 0:
-			return 6 # Normal hold note with params
 		
-		return 4 # Normal hold note
+static func get_serialized_type(note : NoteData) -> int:
+	var offset : int = 0
+	if note.Length > 0.0:
+		offset += 4
+		
+	return get_serialized_tap_note_type(note) + offset
 	
-	if note.Type != "normal":
+static func get_serialized_tap_note_type(note : NoteData) -> int:
+	if note.Type != &"normal":
 		if note.Parameters.size() > 0:
 			return 3 # Typed tap note with params
-		
+
 		return 1 # Typed tap note
-	
+
 	if note.Parameters.size() > 0:
 		return 2 # Tap note with params
-	
+
 	return 0 # Normal tap note

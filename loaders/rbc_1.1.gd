@@ -1,6 +1,6 @@
 # For loading RubiChart v1.1
 static func convert(reader : FileAccess) -> RubiChart:
-	# Assuming this reader is at position 3 currently
+	# Assuming this reader is at position 1 currently
 	
 	var chart : RubiChart = RubiChart.new()
 	chart.Difficulty = reader.get_32()
@@ -55,51 +55,19 @@ static func convert(reader : FileAccess) -> RubiChart:
 			var serialized_type : int = reader.get_8()
 			note.Time = reader.get_float()
 			note.Lane = int(reader.get_32())
+
+			if serialized_type >= 4: # Is hold note
+				note.Length = reader.get_float()
+				serialized_type -= 4
 			
 			match serialized_type:
-				1: # Typed tap note
+				1: # Typed note
 					note.Type = note_types[int(reader.get_32())]
-				2: # Tap note with params
-					var param_count : int = int(reader.get_32())
-					for k in param_count:
-						var param_name_length : int = int(reader.get_32())
-						var param_name : StringName = reader.get_buffer(param_name_length).get_string_from_utf8()
-						var param_value_length : int = int(reader.get_32())
-						var param_value : Variant = bytes_to_var(reader.get_buffer(param_value_length))
-						note.Parameters.set(param_name, param_value)
-				3: # Typed tap note with params
+				2: # Note with params
+					read_note_parameters(reader, note)
+				3: # Typed note with params
 					note.Type = note_types[int(reader.get_32())]
-					var param_count : int = int(reader.get_32())
-					for k in param_count:
-						var param_name_length : int = int(reader.get_32())
-						var param_name : StringName = reader.get_buffer(param_name_length).get_string_from_utf8()
-						var param_value_length : int = int(reader.get_32())
-						var param_value : Variant = bytes_to_var(reader.get_buffer(param_value_length))
-						note.Parameters.set(param_name, param_value)
-				4: # Normal hold note
-					note.Length = reader.get_float()
-				5: # Typed hold note
-					note.Length = reader.get_float()
-					note.Type = note_types[int(reader.get_32())]
-				6: # Hold note with params
-					note.Length = reader.get_float()
-					var param_count : int = int(reader.get_32())
-					for k in param_count:
-						var param_name_length : int = int(reader.get_32())
-						var param_name : StringName = reader.get_buffer(param_name_length).get_string_from_utf8()
-						var param_value_length : int = int(reader.get_32())
-						var param_value : Variant = bytes_to_var(reader.get_buffer(param_value_length))
-						note.Parameters.set(param_name, param_value)
-				7: # Typed hold note with parameters
-					note.Length = reader.get_float()
-					note.Type = note_types[int(reader.get_32())]
-					var param_count : int = int(reader.get_32())
-					for k in param_count:
-						var param_name_length : int = int(reader.get_32())
-						var param_name : StringName = reader.get_buffer(param_name_length).get_string_from_utf8()
-						var param_value_length : int = int(reader.get_32())
-						var param_value : Variant = bytes_to_var(reader.get_buffer(param_value_length))
-						note.Parameters.set(param_name, param_value)
+					read_note_parameters(reader, note)
 		
 		individual_chart.Notes = notes
 		charts.push_back(individual_chart)
@@ -107,3 +75,12 @@ static func convert(reader : FileAccess) -> RubiChart:
 	chart.Charts = charts
 	
 	return chart
+
+static func read_note_parameters(reader : FileAccess, note : NoteData) -> void:
+	var param_count : int = int(reader.get_32())
+	for k in param_count:
+		var param_name_length : int = int(reader.get_32())
+		var param_name : StringName = reader.get_buffer(param_name_length).get_string_from_utf8()
+		var param_value_length : int = int(reader.get_32())
+		var param_value : Variant = bytes_to_var(reader.get_buffer(param_value_length))
+		note.Parameters.set(param_name, param_value)
